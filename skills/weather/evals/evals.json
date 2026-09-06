@@ -1,0 +1,58 @@
+{
+  "skill_name": "weather",
+  "created_at": "2026-06-26T17:41:31.420711",
+  "evals": [
+    {
+      "id": 1,
+      "name": "weather_query_basic",
+      "prompt": "帮我查一下北京今天的天气",
+      "expected_output": "包含天气信息的回答",
+      "assertions": [
+        {
+          "type": "contains",
+          "name": "mentions_weather_or_temp",
+          "substring": "天气"
+        },
+        {
+          "type": "regex",
+          "name": "has_temperature",
+          "pattern": "\\d+°?C|温度|度"
+        },
+        {
+          "type": "length",
+          "name": "min_length",
+          "min_length": 10
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "weather_query_location",
+      "prompt": "伦敦现在多少度？",
+      "expected_output": "包含温度信息",
+      "assertions": [
+        {
+          "type": "contains_all",
+          "name": "has_temp_and_location",
+          "substrings": [
+            "伦敦",
+            "度"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "weather_format_check",
+      "prompt": "如何用命令行查天气？",
+      "expected_output": "提到 wttr.in 或 curl 命令",
+      "assertions": [
+        {
+          "type": "regex",
+          "name": "has_curl_or_wttr",
+          "pattern": "curl|wttr"
+        }
+      ]
+    }
+  ]
+}
