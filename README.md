@@ -37,11 +37,16 @@ python run_agentic_eval.py smoke # 单条 agentic 执行，打印完整轨迹
 ## 项目结构
 
 ```
-├── skills/                    # 技能目录
-│   └── weather/
-│       ├── SKILL.md           # 技能定义
-│       └── evals/
-│           └── evals.json     # 评估用例
+├── skills/                    # 技能目录（7 个：weather / dev-lessons / skills-manager /
+│   │                          #   github / code-tools / summarize / preset-navigator）
+│   ├── weather/
+│   │   ├── SKILL.md           # 技能定义
+│   │   └── evals/
+│   │       └── evals.json     # 评估用例
+│   └── dev-lessons/           # 可检索的个人开发经验库：SKILL.md（场景路由表）
+│       ├── references/        #   + 9 个领域文件（misc 57 条 / deploy-env 26 条 …，按索引检索）
+│       └── scripts/check.js   #   + 一致性校验（编号 / 索引 / 计数，CI 里跑）
+├── skills-manager-audit/      # 技能分发卫生审计工具集（4 份审计报告 + 可复跑脚本）
 ├── skill-workspace/           # 评估工作区（自动生成）
 │   └── weather/
 │       └── iteration-N/       # 每次迭代的结果
@@ -97,6 +102,23 @@ weather 技能 3 个用例，agnes-3.0-flash，数据见 `skill-workspace/weathe
 - 成本：agentic 的 token ≈ 基线 2.6×（多轮调用重复发送上下文），这是自主加载的固有权衡。
 - 稳定性：免费额度会触发 429；执行器内置指数退避 + 随机抖动（对齐 `agent-fault-tolerance-design`），实测一次重试后恢复。
 - 限流会污染跑批（iteration-5 有 5/9 因 429 失败，数据不可用），跑批前建议确认额度或加大退避参数。
+
+## 实测：三臂对照——「可检索经验库」到底有没有用（R1）
+
+`run_devlessons_eval.py` 把这个问题做成可复现的三臂对照（题目出自 `dev-lessons` 技能，断言钉住**模型不可能知道的私有 token**，逐 token 在技能正文里 grep 校验过）：
+
+| 臂 | 含义 | 实验设计 |
+|---|---|---|
+| `without` | 先验基线 | 不注入任何技能，模型直接答 |
+| `inject` | oracle 上限 | 把该题对应的 reference 全文静态注入（**人工已定位到正确文件**，即"知道答案在哪"的上限） |
+| `retrieve` | 真 agentic | 模型自主走「`load_skill` 拿 SKILL.md 索引 → `read_skill_ref` 按编号读单条」，工具只给这两个 |
+
+**2026-10-02 单次运行**：`inject` 6/6 · `retrieve` 6/6 · `without` 1/6——先验答不出私有经验，自主检索链路可走通（其中 5/6 是模型自己走通索引→读文件的，1 题属先验侥幸）。
+LLM 非确定性、数字以当次为准；复现：`python run_devlessons_eval.py`（可 `without,inject` 只跑两臂）。
+
+> 一个由此暴露的设计要点：agentic 执行器默认只注册 `load_skill`（只拿得到 SKILL.md 索引），
+> 答案正文在 `references/` 子文件里——**必须再给一个"按编号读单条"的工具**（`read_skill_ref.py`），
+> 否则会把"读不到"误判成"库无用"。
 
 ## 配置
 
