@@ -1,0 +1,47 @@
+name: ci
+
+# push 到 main（含 PR）自动跑：Python 语法 → 离线单测 → dev-lessons 一致性检查（node）
+#                     → README 素材规范 → 对外材料红线。
+#
+# 说明：不装 requirements（单测与检查脚本都只用标准库）；调用 LLM 的脚本一律不进 CI。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  PYTHONIOENCODING: utf-8
+
+jobs:
+  checks:
+    name: "语法 · 单测 · 技能一致性 · 文档闸门"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: "Python 语法检查"
+        run: python -m compileall -q . -x '(\.venv|node_modules)'
+
+      - name: "单测（离线，不触网）"
+        run: |
+          python test_skills.py
+          python test_skill_linker.py
+
+      - name: "dev-lessons 一致性检查（编号 / 索引 / 计数）"
+        run: node skills/dev-lessons/scripts/check.js
+
+      - name: "README 素材规范（先报告：当前 0 张；补图后删 continue-on-error 转强制）"
+        continue-on-error: true
+        run: python tools/check_readme_shots.py .
+
+      - name: "对外材料红线（品牌词 / 凭据）"
+        run: python tools/check_public_materials.py
