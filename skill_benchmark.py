@@ -37,6 +37,11 @@ class RunMetrics:
     total_tokens: int = 0
     duration_ms: int = 0
     total_duration_seconds: float = 0.0
+    # agentic 扩展指标（静态模式下 iterations=1、tool_calls=0）
+    iterations: int = 0
+    tool_calls: int = 0
+    loaded_skills: List[str] = field(default_factory=list)
+    stop_reason: str = ""
 
 
 @dataclass
@@ -52,9 +57,18 @@ class BenchmarkResult:
 
 @dataclass
 class BenchmarkConfig:
+    """配置项。
+
+    - baseline=True：无技能对照，单次调用
+    - agentic=True：agentic loop，技能由模型通过 load_skill 自主加载
+      （skill_name 仅作标注；执行器需实现 execute_agentic）
+    - 默认：静态注入 skill_name 的技能正文 + 单次调用
+    """
+
     name: str
     skill_name: Optional[str] = None
     baseline: bool = False
+    agentic: bool = False
 
 
 @dataclass
@@ -68,6 +82,9 @@ class BenchmarkSummary:
     avg_tokens: Dict[str, float]
     avg_duration: Dict[str, float]
     delta_pass_rate: Optional[float] = None
+    avg_iterations: Dict[str, float] = field(default_factory=dict)
+    avg_tool_calls: Dict[str, float] = field(default_factory=dict)
+    stop_reason_counts: Dict[str, Dict[str, int]] = field(default_factory=dict)
 
 
 class SkillBenchmark:
@@ -108,6 +125,7 @@ class SkillBenchmark:
                 eval_dir.mkdir(parents=True, exist_ok=True)
 
                 output, tokens, duration = self._execute_eval(eval_case, config)
+                trace = getattr(self.executor, "last_trace", None)
 
                 assertions = self.evals.evaluate_output(eval_case, output)
                 passed = all(r.passed for r in assertions)
@@ -115,7 +133,11 @@ class SkillBenchmark:
                 metrics = RunMetrics(
                     total_tokens=tokens,
                     duration_ms=int(duration * 1000),
-                    total_duration_seconds=duration
+                    total_duration_seconds=duration,
+                    iterations=getattr(trace, "iterations", 0) if trace else 0,
+                    tool_calls=len(getattr(trace, "tool_calls", []) or []) if trace else 0,
+                    loaded_skills=list(getattr(trace, "loaded_skills_unique", []) or []) if trace else [],
+                    stop_reason=getattr(trace, "stop_reason", "") if trace else "",
                 )
 
                 result = BenchmarkResult(
@@ -129,7 +151,7 @@ class SkillBenchmark:
                 )
                 results.append(result)
 
-                self._save_eval_result(eval_dir, eval_case, output, assertions, metrics)
+                self._save_eval_result(eval_dir, eval_case, output, assertions, metrics, trace)
 
             all_results[config.name] = results
 
@@ -141,6 +163,13 @@ class SkillBenchmark:
     def _execute_eval(self, eval_case: EvalCase, config: BenchmarkConfig) -> Tuple[str, int, float]:
         if config.baseline:
             return self.executor.execute(eval_case.prompt, skill_name=None)
+        if config.agentic:
+            runner = getattr(self.executor, "execute_agentic", None)
+            if runner is None:
+                raise ValueError(
+                    f"配置 '{config.name}' 需要 agentic 执行器（executor 缺 execute_agentic 方法）"
+                )
+            return runner(eval_case.prompt)
         return self.executor.execute(eval_case.prompt, skill_name=config.skill_name)
 
     def _save_eval_result(
@@ -149,7 +178,8 @@ class SkillBenchmark:
         eval_case: EvalCase,
         output: str,
         assertions: List[EvalResult],
-        metrics: RunMetrics
+        metrics: RunMetrics,
+        trace: Any = None,
     ):
         with open(eval_dir / "output.txt", "w", encoding="utf-8") as f:
             f.write(output)
@@ -158,8 +188,16 @@ class SkillBenchmark:
             json.dump({
                 "total_tokens": metrics.total_tokens,
                 "duration_ms": metrics.duration_ms,
-                "total_duration_seconds": metrics.total_duration_seconds
+                "total_duration_seconds": metrics.total_duration_seconds,
+                "iterations": metrics.iterations,
+                "tool_calls": metrics.tool_calls,
+                "loaded_skills": metrics.loaded_skills,
+                "stop_reason": metrics.stop_reason,
             }, f, indent=2)
+
+        if trace is not None and hasattr(trace, "to_dict"):
+            with open(eval_dir / "agent_trace.json", "w", encoding="utf-8") as f:
+                json.dump(trace.to_dict(), f, indent=2, ensure_ascii=False)
 
         with open(eval_dir / "grading.json", "w", encoding="utf-8") as f:
             json.dump({
@@ -192,6 +230,9 @@ class SkillBenchmark:
         pass_rates: Dict[str, float] = {}
         avg_tokens: Dict[str, float] = {}
         avg_duration: Dict[str, float] = {}
+        avg_iterations: Dict[str, float] = {}
+        avg_tool_calls: Dict[str, float] = {}
+        stop_reason_counts: Dict[str, Dict[str, int]] = {}
 
         for config in configs:
             config_results = results.get(config.name, [])
@@ -204,6 +245,19 @@ class SkillBenchmark:
 
                 durations = [r.metrics.duration_ms for r in config_results if r.metrics]
                 avg_duration[config.name] = statistics.mean(durations) if durations else 0
+
+                iterations = [r.metrics.iterations for r in config_results if r.metrics]
+                avg_iterations[config.name] = statistics.mean(iterations) if iterations else 0
+
+                tool_calls = [r.metrics.tool_calls for r in config_results if r.metrics]
+                avg_tool_calls[config.name] = statistics.mean(tool_calls) if tool_calls else 0
+
+                counts: Dict[str, int] = {}
+                for r in config_results:
+                    reason = r.metrics.stop_reason if r.metrics else ""
+                    if reason:
+                        counts[reason] = counts.get(reason, 0) + 1
+                stop_reason_counts[config.name] = counts
 
         delta = None
         if len(configs) >= 2:
@@ -220,7 +274,10 @@ class SkillBenchmark:
             pass_rates=pass_rates,
             avg_tokens=avg_tokens,
             avg_duration=avg_duration,
-            delta_pass_rate=delta
+            delta_pass_rate=delta,
+            avg_iterations=avg_iterations,
+            avg_tool_calls=avg_tool_calls,
+            stop_reason_counts=stop_reason_counts,
         )
 
     def _save_benchmark_summary(self, iteration_dir: Path, summary: BenchmarkSummary):
@@ -233,6 +290,9 @@ class SkillBenchmark:
             "avg_tokens": summary.avg_tokens,
             "avg_duration_ms": summary.avg_duration,
             "delta_pass_rate": summary.delta_pass_rate,
+            "avg_iterations": summary.avg_iterations,
+            "avg_tool_calls": summary.avg_tool_calls,
+            "stop_reason_counts": summary.stop_reason_counts,
             "results": {}
         }
 
@@ -241,6 +301,10 @@ class SkillBenchmark:
                 "eval_name": r.eval_name,
                 "eval_id": r.eval_id,
                 "passed": r.passed,
+                "iterations": r.metrics.iterations if r.metrics else 0,
+                "tool_calls": r.metrics.tool_calls if r.metrics else 0,
+                "loaded_skills": r.metrics.loaded_skills if r.metrics else [],
+                "stop_reason": r.metrics.stop_reason if r.metrics else "",
                 "assertions": [{
                     "name": a.assertion_name,
                     "passed": a.passed,
@@ -266,14 +330,30 @@ class SkillBenchmark:
             f""
         ]
 
-        lines.append("| Configuration | Pass Rate | Avg Tokens | Avg Duration |")
-        lines.append("|--------------|-----------|------------|--------------|")
+        lines.append("| Configuration | Pass Rate | Avg Tokens | Avg Duration | Avg Steps | Avg Tool Calls |")
+        lines.append("|--------------|-----------|------------|--------------|-----------|----------------|")
         for config in summary.configs:
-            lines.append(f"| {config} | {summary.pass_rates.get(config, 0):.1f}% | {summary.avg_tokens.get(config, 0):.0f} | {summary.avg_duration.get(config, 0):.0f}ms |")
+            lines.append(
+                f"| {config} | {summary.pass_rates.get(config, 0):.1f}% "
+                f"| {summary.avg_tokens.get(config, 0):.0f} "
+                f"| {summary.avg_duration.get(config, 0):.0f}ms "
+                f"| {summary.avg_iterations.get(config, 0):.1f} "
+                f"| {summary.avg_tool_calls.get(config, 0):.1f} |"
+            )
 
         if summary.delta_pass_rate is not None:
             lines.append(f"")
             lines.append(f"**Delta (Skill vs Baseline):** {summary.delta_pass_rate:+.1f}%")
+
+        if any(summary.stop_reason_counts.values()):
+            lines.append("")
+            lines.append("## Stop Reasons")
+            lines.append("")
+            for config in summary.configs:
+                counts = summary.stop_reason_counts.get(config) or {}
+                if counts:
+                    detail = ", ".join(f"{k}: {v}" for k, v in sorted(counts.items()))
+                    lines.append(f"- **{config}**: {detail}")
 
         lines.append("")
         lines.append("## Detailed Results")
@@ -282,12 +362,18 @@ class SkillBenchmark:
         for config_name, config_results in summary.results.items():
             lines.append(f"### {config_name}")
             lines.append("")
-            lines.append("| Eval | Passed | Assertions |")
-            lines.append("|------|--------|------------|")
+            lines.append("| Eval | Passed | Assertions | Steps | Tool Calls | Loaded Skills | Stop Reason |")
+            lines.append("|------|--------|------------|-------|------------|---------------|-------------|")
             for r in config_results:
                 passed_count = sum(1 for a in r.assertion_results if a.passed)
                 total_count = len(r.assertion_results)
-                lines.append(f"| {r.eval_name} | {'✓' if r.passed else '✗'} | {passed_count}/{total_count} |")
+                m = r.metrics
+                loaded = ", ".join(m.loaded_skills) if m and m.loaded_skills else "-"
+                lines.append(
+                    f"| {r.eval_name} | {'✓' if r.passed else '✗'} | {passed_count}/{total_count} "
+                    f"| {m.iterations if m else 0} | {m.tool_calls if m else 0} "
+                    f"| {loaded} | {m.stop_reason if m else '-'} |"
+                )
 
             lines.append("")
 
