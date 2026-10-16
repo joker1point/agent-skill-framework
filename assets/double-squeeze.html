@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>双重挤压 · 动态示意 — agent-skill-framework</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23f7f4ef'/%3E%3Crect x='3' y='8' width='3' height='5' fill='%237A5AF8'/%3E%3Crect x='7' y='4' width='3' height='9' fill='%237A5AF8'/%3E%3Crect x='11' y='8' width='3' height='5' fill='%236941C6'/%3E%3C/svg%3E">
+<!--
+  「双重挤压」动态示意（概念动画，非实测图）
+  术语 / 类别 / 判据逐条对应 SKILL_GOVERNANCE.md §13；底部「实测呼应」引用真实实验数据。
+  手绘静态版：double-squeeze.excalidraw / double-squeeze.png（同目录）
+  单文件离线页：无外部请求、无 CDN。
+  深链：#t=0 / #t=1 / #t=2 / #t=3 直接落到对应轮次。
+-->
+<style>
+  :root {
+    --paper:       oklch(0.972 0.006 85);
+    --paper-2:     oklch(0.948 0.008 85);
+    --ink:         oklch(0.235 0.015 70);
+    --ink-2:       oklch(0.40 0.015 70);
+    --muted:       oklch(0.545 0.012 75);
+    --faint:       oklch(0.72 0.010 80);
+    --rule:        oklch(0.87 0.008 82);
+    --rule-strong: oklch(0.30 0.014 70);
+    --font-sans:  system-ui, -apple-system, "Segoe UI", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    --font-serif: "Palatino Linotype", Palatino, "Iowan Old Style", Georgia, "Songti SC", "Noto Serif CJK SC", SimSun, serif;
+    --font-mono:  ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font-sans); font-size: 1rem; line-height: 1.6; font-kerning: normal;
+  }
+  .page { max-width: 60rem; margin: 0 auto; padding: 3rem 1.5rem 4.5rem; }
+
+  /* 报头 */
+  .masthead { border-top: 3px solid var(--rule-strong); padding-top: 1.1rem; }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  }
+  h1 { font-size: 2.1rem; line-height: 1.22; font-weight: 750; margin: 1.2rem 0 0.4rem; letter-spacing: -0.01em; }
+  .dateline { font-family: var(--font-serif); font-size: 1.02rem; color: var(--ink-2); font-variant-caps: all-small-caps; letter-spacing: 0.05em; }
+  .lead { max-width: 68ch; margin: 0.9rem 0 0; }
+  .lead strong { font-weight: 650; }
+
+  /* 舞台 */
+  .stage-wrap { margin-top: 2.2rem; border: 1px solid var(--rule); border-radius: 2px; background: #fff; padding: 1rem 1.1rem 1.1rem; }
+  svg#stage { display: block; width: 100%; height: auto; }
+  svg#stage text { font-family: var(--font-sans); }
+  .force { font-size: 22px; font-weight: 650; }
+  .force.model { fill: #7A5AF8; }
+  .force.harness { fill: #6941C6; }
+  .force-sub { font-size: 13px; }
+  .force-sub.model { fill: #7A5AF8; }
+  .force-sub.harness { fill: #6941C6; }
+  .items text { font-size: 14px; fill: #475467; transition: opacity 0.15s linear; }
+  .items text.done { text-decoration: line-through; fill: #98A2B3; }
+  .strip-title { font-size: 15px; font-weight: 650; fill: #D92D20; }
+  .strip-sub { font-size: 11px; fill: #D92D20; }
+  .eaten { font-size: 13px; font-weight: 650; fill: #027A48; }
+  .core-title { font-size: 16px; font-weight: 650; fill: #027A48; }
+  .core-sub { font-size: 11px; fill: #027A48; }
+  .core-row { font-size: 14px; fill: #111827; }
+  #core.glow { animation: coreglow 1.8s ease-in-out infinite; }
+  @keyframes coreglow { 0%, 100% { stroke-width: 2; } 50% { stroke-width: 4.5; } }
+
+  /* 控制条 */
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 1.4rem; align-items: center; margin-top: 1rem; }
+  @media (max-width: 640px) { .controls { grid-template-columns: 1fr; gap: 0.8rem; } }
+  .btn {
+    appearance: none; cursor: pointer; font: inherit; font-size: 0.9rem;
+    background: transparent; color: var(--ink-2); border: 1px solid var(--rule-strong);
+    border-radius: 2px; padding: 0.4rem 1rem; white-space: nowrap; min-width: 8.5rem;
+  }
+  .btn:hover { background: var(--paper-2); }
+  .btn:disabled { color: var(--faint); border-color: var(--rule); cursor: default; }
+  .btn:focus-visible { outline: 2px solid #7A5AF8; outline-offset: 2px; }
+  .range-wrap { min-width: 0; }
+  input[type="range"] { width: 100%; accent-color: #7A5AF8; cursor: pointer; }
+  .ticks { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.06em; padding: 0 2px; }
+  .status {
+    grid-column: 1 / -1; margin: 0.2rem 0 0; font-size: 0.9rem; color: var(--ink-2);
+    border-left: 3px solid #D0D5DD; padding-left: 0.7rem; min-height: 1.7em;
+  }
+
+  /* 底部口径 */
+  .bottoms { margin-top: 2.4rem; }
+  .rule-line { font-size: 1.15rem; font-weight: 650; letter-spacing: -0.005em; }
+  .sub-lines { margin-top: 0.45rem; font-size: 0.85rem; color: var(--muted); }
+  .sub-lines div { margin-bottom: 0.25rem; }
+  .sub-lines code, footer code { font-family: var(--font-mono); font-size: 0.82em; background: var(--paper-2); padding: 0.04rem 0.3rem; border-radius: 2px; }
+
+  footer { margin-top: 2.8rem; border-top: 3px solid var(--rule-strong); padding-top: 1rem; font-size: 0.85rem; color: var(--muted); }
+  footer h2 { font-size: 0.8rem; margin: 0 0 0.5rem; letter-spacing: 0.08em; color: var(--ink-2); }
+  footer ul { margin: 0; padding-left: 1.1rem; }
+  footer li { margin-bottom: 0.35rem; max-width: 70ch; }
+  .footline { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; font-size: 0.72rem; color: var(--faint); font-family: var(--font-mono); letter-spacing: 0.04em; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #core.glow { animation: none; }
+    .items text { transition: none; }
+  }
+  @media print { .btn, input[type="range"] { display: none; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">
+      <span>agent-skill-framework · L5 生命周期 · 概念动画</span>
+      <span>对齐 SKILL_GOVERNANCE §13</span>
+    </div>
+    <h1>双重挤压：技能层的时间演化</h1>
+    <div class="dateline">模型智力 × harness 架构 · 每经历一轮升级，两侧各被吃掉一层</div>
+    <p class="lead">
+      拖滑块或点「播放」：两股力量从两侧推进，<strong>补偿型</strong>与<strong>包装型</strong>被逐项吸收；
+      挤到最后，中间只剩核心四类——<strong>越通用死得越快，越私人活得越久</strong>。
+    </p>
+  </header>
+
+  <section class="stage-wrap" aria-label="双重挤压示意动画">
+    <svg id="stage" viewBox="0 0 1200 440" role="img" aria-label="技能层被模型能力与 harness 架构从两侧挤压的示意">
+      <defs>
+        <marker id="ah-model" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#7A5AF8"></path>
+        </marker>
+        <marker id="ah-harness" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#6941C6"></path>
+        </marker>
+      </defs>
+
+      <!-- 层容器 + 三段区 -->
+      <rect id="band" x="290" y="180" width="620" height="200" fill="none" stroke="#D0D5DD" stroke-width="2"></rect>
+      <rect id="eatL" x="290" y="180" width="130" height="200" fill="#FEF3F2" stroke="#D92D20" stroke-width="2" stroke-dasharray="7 5"></rect>
+      <rect id="eatR" x="780" y="180" width="130" height="200" fill="#FEF3F2" stroke="#D92D20" stroke-width="2" stroke-dasharray="7 5"></rect>
+      <rect id="core" x="420" y="180" width="360" height="200" fill="#ECFDF3" stroke="#027A48" stroke-width="2"></rect>
+
+      <!-- 核心内容 -->
+      <text x="440" y="212" class="core-title">幸存四类</text>
+      <text x="440" y="234" class="core-sub">（越私人活得越久）</text>
+      <text x="440" y="266" class="core-row">① 太专 · 特定领域非强制流程</text>
+      <text x="440" y="292" class="core-row">② 太私 · 神秘小众癖好</text>
+      <text x="440" y="318" class="core-row">③ 太有立场 · 价值判断</text>
+      <text x="440" y="344" class="core-row">④ 太长尾 · 低复杂度自动化</text>
+
+      <!-- 消亡区标签 -->
+      <text id="eatLTitle" x="355" y="212" text-anchor="middle" class="strip-title">补偿型 skill</text>
+      <text id="eatLSub" x="355" y="234" text-anchor="middle" class="strip-sub">（正在被吸收）</text>
+      <text id="eatRTitle" x="845" y="212" text-anchor="middle" class="strip-title">包装型 skill</text>
+      <text id="eatRSub" x="845" y="234" text-anchor="middle" class="strip-sub">（正在被吸收）</text>
+
+      <!-- 两股力 -->
+      <line id="arrL" x1="40" y1="280" x2="290" y2="280" stroke="#7A5AF8" stroke-width="5" marker-end="url(#ah-model)"></line>
+      <line id="arrR" x1="1160" y1="280" x2="910" y2="280" stroke="#6941C6" stroke-width="5" marker-end="url(#ah-harness)"></line>
+
+      <!-- 力的标签 + 被吸收清单 -->
+      <text x="40" y="64" class="force model">模型智力上升</text>
+      <text x="40" y="90" class="force-sub model">吸收 · 补偿型</text>
+      <g id="listL" class="items">
+        <text x="40" y="126">· 纪律执行</text>
+        <text x="40" y="150">· 格式约定</text>
+        <text x="40" y="174">· 思维框架</text>
+      </g>
+      <text x="1160" y="64" text-anchor="end" class="force harness">harness 架构优化</text>
+      <text x="1160" y="90" text-anchor="end" class="force-sub harness">吸收 · 包装型</text>
+      <g id="listR" class="items">
+        <text x="1160" y="126" text-anchor="end">· 部署包装</text>
+        <text x="1160" y="150" text-anchor="end">· 浏览器操作</text>
+        <text x="1160" y="174" text-anchor="end">· 流程编排</text>
+      </g>
+
+      <!-- 吸收完成标记 -->
+      <text id="eatenL" x="412" y="326" text-anchor="end" class="eaten" opacity="0">✓ 已吸收</text>
+      <text id="eatenR" x="788" y="326" text-anchor="start" class="eaten" opacity="0">✓ 已吸收</text>
+    </svg>
+
+    <div class="controls">
+      <button id="play" class="btn" type="button">播放演化 ▶</button>
+      <div class="range-wrap">
+        <input id="slider" type="range" min="0" max="3" step="1" value="0" aria-label="演进轮次">
+        <div class="ticks"><span>初始</span><span>第一轮</span><span>第二轮</span><span>第三轮</span></div>
+      </div>
+      <p id="status" class="status">起点：补偿型与包装型都还在——核心四类与它们同处一层。</p>
+    </div>
+  </section>
+
+  <section class="bottoms">
+    <div class="rule-line">判据：通用性经济学的死角 —— 越通用死得越快，越私人活得越久</div>
+    <div class="sub-lines">
+      <div>升级触发审计：三问过滤 —— 智力测试 · 吸收测试 · 幸存测试</div>
+      <div>实测呼应：通用知识（weather）两轮对照完全翻转 ｜ 私有知识 <code>0/7 → 7/7</code></div>
+      <div>图示为节奏示意（吸收不按固定顺序逐个发生）；类别与判据逐条对应治理文档 §13。手绘静态版：同目录 <code>double-squeeze.png</code></div>
+    </div>
+  </section>
+
+  <footer>
+    <h2>口径与溯源</h2>
+    <ul>
+      <li><b>概念来源：</b>术语（双重挤压 / 补偿型 / 包装型 / 四类幸存区的「四太」）与判据原句取自 <code>SKILL_GOVERNANCE.md</code> §13「双重挤压与吸收审计」。</li>
+      <li><b>实测数据：</b><code>skill-workspace/{preset-navigator, skills-manager, code-tools}/iteration-1/</code>（2026-09-29）、<code>weather/iteration-6,7/</code>；模型 agnes-3.0-flash。</li>
+      <li><b>边界：</b>本页是概念示意动画，不是实验图表；「被吃掉」的节奏是示意，五类牺牲品、四类幸存区、判据文字均为文档原义。</li>
+    </ul>
+    <div class="footline">
+      <span>agent-skill-framework · double squeeze (dynamic)</span>
+      <span>单文件离线页 · 无外部依赖 · 深链 #t=0..3</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+/* ======================================================================
+   示意状态机：t ∈ [0,3] 连续；每满 1 = 一轮升级事件（模型或 harness）
+   两端各吃一项，区块宽度随之收缩；t=3 时只剩核心四类。
+   ====================================================================== */
+const RM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const EAT_W0 = 130;   /* 每侧消亡区初始宽（SVG 坐标） */
+const CORE_L = 420;   /* 核心区左缘（固定） */
+const CORE_R = 780;   /* 核心区右缘（固定） */
+
+const ROUND_TEXT = [
+  "起点：补偿型与包装型都还在——核心四类与它们同处一层。",
+  "第 1 轮：模型升级吸收「纪律执行」；harness 大版本吸收「部署包装」。",
+  "第 2 轮：继续吸收「格式约定」与「浏览器操作」。",
+  "第 3 轮：吸收「思维框架」与「流程编排」——只剩核心四类。"
+];
+
+const $ = id => document.getElementById(id);
+const band = $("band"), eatL = $("eatL"), eatR = $("eatR"), core = $("core");
+const arrL = $("arrL"), arrR = $("arrR");
+const eatLTitle = $("eatLTitle"), eatLSub = $("eatLSub"), eatRTitle = $("eatRTitle"), eatRSub = $("eatRSub");
+const eatenL = $("eatenL"), eatenR = $("eatenR");
+const listL = Array.from($("listL").querySelectorAll("text"));
+const listR = Array.from($("listR").querySelectorAll("text"));
+const slider = $("slider"), btn = $("play"), status = $("status");
+
+const clamp01 = v => Math.min(1, Math.max(0, v));
+
+let t = 0;
+let raf = 0;
+let playing = false;
+
+function render(v) {
+  const k = Math.min(3, Math.max(0, v));
+  const wL = EAT_W0 * (1 - k / 3);
+  const wR = wL;
+  const bL = CORE_L - wL;
+  const bR = CORE_R + wR;
+
+  eatL.setAttribute("x", bL);        eatL.setAttribute("width", Math.max(0, wL));
+  eatR.setAttribute("x", CORE_R);    eatR.setAttribute("width", Math.max(0, wR));
+  band.setAttribute("x", bL);        band.setAttribute("width", Math.max(0, bR - bL));
+  arrL.setAttribute("x2", bL);
+  arrR.setAttribute("x2", bR);
+
+  const titleOp = clamp01((wL - 55) / 60);
+  [eatLTitle, eatLSub].forEach(el => {
+    el.setAttribute("x", bL + wL / 2);
+    el.setAttribute("opacity", titleOp.toFixed(3));
+  });
+  [eatRTitle, eatRSub].forEach(el => {
+    el.setAttribute("x", CORE_R + wR / 2);
+    el.setAttribute("opacity", titleOp.toFixed(3));
+  });
+
+  const eatenOp = 1 - clamp01(wL / 50);
+  eatenL.setAttribute("opacity", eatenOp.toFixed(3));
+  eatenR.setAttribute("opacity", eatenOp.toFixed(3));
+
+  listL.forEach((el, i) => {
+    const p = clamp01(k - i);
+    el.style.opacity = (1 - 0.85 * p).toFixed(3);
+    el.classList.toggle("done", p > 0.5);
+  });
+  listR.forEach((el, i) => {
+    const p = clamp01(k - i);
+    el.style.opacity = (1 - 0.85 * p).toFixed(3);
+    el.classList.toggle("done", p > 0.5);
+  });
+
+  core.classList.toggle("glow", k >= 2.9);
+  slider.value = String(Math.round(k));
+  status.textContent = ROUND_TEXT[Math.round(k)];
+}
+
+/* ---- 补间 ---- */
+function tweenTo(target, dur = 750) {
+  cancelAnimationFrame(raf);
+  const from = t, delta = target - from, t0 = performance.now();
+  if (RM || dur <= 0) { t = target; render(t); return Promise.resolve(); }
+  return new Promise(resolve => {
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur);
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; /* easeInOutCubic */
+      t = from + delta * e;
+      render(t);
+      if (p < 1) { raf = requestAnimationFrame(step); } else { t = target; render(t); resolve(); }
+    };
+    raf = requestAnimationFrame(step);
+  });
+}
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+async function play() {
+  if (playing) return;
+  playing = true;
+  btn.disabled = true;
+  btn.textContent = "演化中…";
+  await tweenTo(0, 0);
+  await wait(350);
+  for (let r = 1; r <= 3; r++) {
+    await tweenTo(r, 820);
+    await wait(620);
+  }
+  btn.textContent = "重播 ↻";
+  btn.disabled = false;
+  playing = false;
+}
+
+btn.addEventListener("click", play);
+slider.addEventListener("input", () => {
+  playing = false;
+  btn.disabled = false;
+  btn.textContent = "播放演化 ▶";
+  tweenTo(Number(slider.value), 620);
+});
+
+/* ---- 初始化：支持 #t=0..3 深链；默认自动播放一次 ---- */
+function init() {
+  const m = /#t=(\d(?:\.\d)?)/.exec(location.hash || "");
+  t = m ? Math.min(3, Math.max(0, Number(m[1]))) : 0;
+  render(t);
+  if (RM) { t = 3; render(t); return; }
+  if (!m) { setTimeout(play, 700); }
+}
+window.addEventListener("hashchange", () => {
+  const m = /#t=(\d(?:\.\d)?)/.exec(location.hash || "");
+  if (m) { playing = false; btn.disabled = false; btn.textContent = "播放演化 ▶"; tweenTo(Number(m[1]), 620); }
+});
+init();
+</script>
+</body>
+</html>
