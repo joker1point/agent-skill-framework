@@ -1,0 +1,72 @@
+{
+  "skill_name": "dev-lessons",
+  "created_for": "R1 三臂对照（without / inject / retrieve）",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pre-longtask",
+      "prompt": "这台机器跑长任务（渲染/长构建）前必须先做什么？",
+      "inject_ref": "references/deploy-env.md",
+      "expected_output": "先查可用内存，本机有内存守护会在临界杀进程",
+      "assertions": [
+        {"type": "contains", "name": "mem", "substring": "可用内存"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "yarn-dev-pwd",
+      "prompt": "用 yarn dev 启动本项目时报 Unbound variable \"PWD\"，怎么绕？",
+      "inject_ref": "references/misc.md",
+      "expected_output": "别误判成依赖损坏，直接跑底层命令 yarn start 或 npx next dev",
+      "assertions": [
+        {"type": "contains", "name": "yarn_start", "substring": "yarn start"},
+        {"type": "contains", "name": "npx_next", "substring": "npx next dev"}
+      ],
+      "assert_any": true
+    },
+    {
+      "id": 3,
+      "name": "contentlayer-clean",
+      "prompt": "用 contentlayer 写的博客，删掉一篇已发布文章后重新构建，线上还出现旧文章页，怎么彻底清掉？",
+      "inject_ref": "references/misc.md",
+      "expected_output": "整目录删 .contentlayer/{generated,.cache} 再重建",
+      "assertions": [
+        {"type": "contains", "name": "generated", "substring": "generated"},
+        {"type": "contains", "name": "dot_cache", "substring": ".cache"}
+      ],
+      "assert_any": true
+    },
+    {
+      "id": 4,
+      "name": "chapter-numbering",
+      "prompt": "给一个已经发布上线的博客文章加章节自动编号，我能不能直接改文章标题文本来加编号？该怎么正确做？",
+      "inject_ref": "references/frontend-backend.md",
+      "expected_output": "别改写标题文本（会牵动锚点 id 与目录两处权威源），用 CSS 计数器 + 运行时算目录",
+      "assertions": [
+        {"type": "contains", "name": "anchor", "substring": "锚点"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "reading-time",
+      "prompt": "中文博客用 reading-time 这个 npm 包算阅读时长，会有什么口径问题？",
+      "inject_ref": "references/frontend-backend.md",
+      "expected_output": "构建期英文库 reading-time + 渲染期自写 wordCount，同一事实两个数字、中英混杂，应共用同一实现",
+      "assertions": [
+        {"type": "contains", "name": "build_phase", "substring": "构建期"},
+        {"type": "contains", "name": "render_phase", "substring": "渲染期"}
+      ],
+      "assert_any": true
+    },
+    {
+      "id": 6,
+      "name": "ide-guard",
+      "prompt": "IDE 更新被提示“检测到应用安装目录下存在用户项目目录”拦下了，我删掉那个目录重开它又自动回来了，怎么破？",
+      "inject_ref": "references/deploy-env.md",
+      "expected_output": "程序自己每次启动会把 deviceInfo.json 写进安装目录的隐藏子目录，自己拦自己；清理后立刻在当前窗口触发更新，别重启应用",
+      "assertions": [
+        {"type": "contains", "name": "deviceinfo", "substring": "deviceInfo.json"}
+      ]
+    }
+  ]
+}
