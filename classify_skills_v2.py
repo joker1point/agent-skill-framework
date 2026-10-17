@@ -2,11 +2,12 @@
 更新分类规则，重点关注开发辅助类skill
 新增专门的开发相关分类，并将分类结果写入数据库
 """
+import os
 import sqlite3
 import json
 import re
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 
 conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row

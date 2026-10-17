@@ -1,7 +1,8 @@
+import os
 import sqlite3
 import time
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 
 ASSIGNMENTS = {
     "研究分析": ["arxiv-watcher", "citation-manager"],

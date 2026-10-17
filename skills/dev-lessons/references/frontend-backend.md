@@ -22,6 +22,7 @@
 | F-14 | 已发布内容加自动编号：别改写标题文本（锚点会断），用 CSS 计数器 | #前端 #内容站 #SEO |
 | F-15 | 动效先算「浏览器覆盖 × 交互频率」，再想 reduced-motion 的兜底 | #前端 #动效 #可访问性 |
 | F-16 | 中文内容站的阅读时长口径：构建期与渲染期两套算法，数字必然对不上 | #前端 #内容站 #i18n |
+| F-17 | 静态导出站（basePath + .html）里别用 usePathname() 推导链接 | #前端 #Next.js #静态导出 #hydration #链接 |
 
 ### F-01 占位状态显式建模：绝不把占位文本当结果
 - 场景：#异步 #前端
@@ -151,3 +152,11 @@
 - 方案：**构建期与渲染期共用同一份实现**——`contentlayer.config.ts` 的 `readingTime` computed field 改为 `import { countWords, readingTime } from './lib/wordCount'`，产出 `{ text: '阅读约 N 分钟', minutes, words, time }`；首页、列表、文章页全部渲染这同一份数据。
 - 反模式：给中文站直接套英文阅读时长库（`reading-time` 等）就当口径可用；同一展示事实在构建期与渲染期各写一版（必然漂移）；发现两处数字不一致时只改一处文案，不统一源头。
 - 溯源：TechLog 文章页改版（2026-09-28，`lib/wordCount.ts` + `contentlayer.config.ts`）
+
+### F-17 静态导出站（basePath + .html）里别用 usePathname() 推导链接：SSR/CSR 值不一致，客户端点击必 404
+- 场景：#前端 #Next.js #静态导出 #hydration #链接 #basePath
+- 问题：列表页底部点「下一页」跳到 `blog.html/page/2.html`（把 `.html` 当成了目录段）→ 404；SSR 输出的 href 与 DOM 属性看起来都对，console 也没有 hydration 报错，只有**点击**才炸。
+- 根因：`usePathname()` 在**客户端**返回带 basePath 前缀与 `.html` 后缀的真实 URL（`/techlog/blog.html`），在**服务端**返回路由路径（`/blog`）。用 `replace(/\/page\/\d+$/,'')` 剥分页段时 `.html` 剥不掉 → 拼出 `<list>.html/page/N.html`。两处不一致时 React 19 会保留服务端 DOM（attribute 仍是旧值），但点击走 hydration 后客户端树的值 → 必 404。判据：点击瞬间的 RSC 请求 URL 里能看到 `/blog.html/page/2.html.txt?_rsc=...`。
+- 方案：链接根路径**显式 prop 传入**（服务端已知，如 `basePath="/blog"`、`/tags/<slug>`），组件不依赖 usePathname；侧栏激活态同理（`activeTag` prop）。验证必须在「静态导出 + BASE_PATH + 前缀目录托管」形态下点一遍：`EXPORT=1 BASE_PATH=/techlog` 构建后把 `out/` 挂到 `<root>/techlog/` 用静态服务器复刻线上 URL 形态。
+- 反模式：用 usePathname() 推导站内链接；用 dev server 验证线上 URL 形态问题（dev 下不加 .html、也没有 basePath 后缀，复现不了）；只看 SSR 输出正常就认为没事。
+- 溯源：2026-10-03 TechLog 分页 404 修复（同批修 tag 页分页与侧栏高亮；见 usercontext/2026-10-03.md）

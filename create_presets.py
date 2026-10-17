@@ -1,9 +1,10 @@
+import os
 import sqlite3
 import uuid
 import time
 import json
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 
 PRESETS = {
     "web-dev": {

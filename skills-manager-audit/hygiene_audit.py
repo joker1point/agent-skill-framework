@@ -17,7 +17,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-DB = "C:/Users/biren/.skills-manager/skills-manager.db"
+DB = "%USERPROFILE%/.skills-manager/skills-manager.db"
 OUT = Path(__file__).parent / "report-hygiene.md"
 sys.stdout.reconfigure(encoding="utf-8")
 

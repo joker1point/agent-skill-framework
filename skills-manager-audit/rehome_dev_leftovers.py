@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import os
 import sqlite3
 import sys
 from collections import defaultdict
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import jieba
 
-DB = "C:/Users/biren/.skills-manager/skills-manager.db"
+DB = "%USERPROFILE%/.skills-manager/skills-manager.db"
 OUT = Path(__file__).parent / "report-dev-leftovers.md"
 sys.stdout.reconfigure(encoding="utf-8")
 

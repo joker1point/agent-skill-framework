@@ -30,7 +30,7 @@ HERE = Path(__file__).parent
 SKILLS_DIR = HERE / "skills"
 DEVLESSONS = "dev-lessons"
 EVALS_PATH = SKILLS_DIR / DEVLESSONS / "evals" / "evals.json"
-FALLBACK_ENV = Path(r"C:\Users\biren\Documents\trae_projects\luyan\CharacterSeed\.env")
+FALLBACK_ENV = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\luyan\CharacterSeed\.env"))
 
 
 def load_credentials() -> None:

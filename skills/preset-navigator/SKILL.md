@@ -34,7 +34,7 @@ always: false
 
 ```python
 import sqlite3
-DB = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB = r"%USERPROFILE%\.skills-manager\skills-manager.db"
 conn = sqlite3.connect(DB)
 cur = conn.cursor()
 cur.execute("SELECT name, description, sort_order FROM scenarios ORDER BY sort_order")
@@ -178,7 +178,7 @@ cur.execute("SELECT name, description FROM skills WHERE description LIKE ?", (f"
 ## 5. 物理位置
 
 技能文件实际存储位置：
-- 中央库：`C:\Users\biren\.skills-manager\skills\`
+- 中央库：`%USERPROFILE%\.skills-manager\skills\`
 - 项目的 `.agents/skills/`（如果有）
 
 每个 Skill 是一个目录，包含 `SKILL.md` 等文件。

@@ -8,7 +8,7 @@ import os
 import sqlite3
 import uuid
 
-DB = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 META = os.path.expanduser(r"~\.skills-manager\skills\.skills-manager")
 
 SKILLS = [

@@ -43,3 +43,6 @@ _backup/
 
 # 个人会话上下文（不发布）
 usercontext/
+
+# 审计产出（含本机路径扫描明细，脚本可重跑生成）
+skills-manager-audit/report-hygiene.md

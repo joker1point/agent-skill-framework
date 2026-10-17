@@ -1,6 +1,7 @@
+import os
 import sqlite3
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
 

@@ -18,9 +18,9 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-QCLAW = pathlib.Path(r"C:\Users\biren\.qclaw\skills")
-CENTRAL = pathlib.Path(r"C:\Users\biren\.skills-manager\skills")
-BACKUP = pathlib.Path(r"C:\Users\biren\.skills-manager\audit-backup-20261009")
+QCLAW = pathlib.Path(os.path.expandvars(r"%USERPROFILE%\.qclaw\skills"))
+CENTRAL = pathlib.Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills"))
+BACKUP = pathlib.Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\audit-backup-20261009"))
 NAMES = ["imap-smtp-email", "kdocs", "persona-switch", "tencent-meeting-mcp"]
 
 

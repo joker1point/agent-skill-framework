@@ -21,7 +21,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 
 BASE_DIR = Path(__file__).parent
-FALLBACK_ENV = Path(r"C:\Users\biren\Documents\trae_projects\luyan\CharacterSeed\.env")
+FALLBACK_ENV = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\luyan\CharacterSeed\.env"))
 DEFAULT_ITERATION = 5
 
 

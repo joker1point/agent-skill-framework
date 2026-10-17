@@ -10,13 +10,14 @@
   token ：<=6k 轻 / 6-12k 中 / >12k 重
 """
 from __future__ import annotations
+import os
 
 import sqlite3
 import sys
 from datetime import datetime
 from pathlib import Path
 
-DB = "C:/Users/biren/.skills-manager/skills-manager.db"
+DB = "%USERPROFILE%/.skills-manager/skills-manager.db"
 OUT = Path(__file__).parent / "report-assembly-budget.md"
 sys.stdout.reconfigure(encoding="utf-8")
 

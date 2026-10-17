@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """查询候选 skill 是否在中央库（名称精确/前缀匹配）"""
+import os
 import sqlite3
 
-DB = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 CANDIDATES = ["code-review", "code-simplifier", "superpowers", "webapp-testing",
               "ui-ux-pro-max", "ralph-loop", "skill-creator", "port-feature-from-reference"]
 

@@ -9,6 +9,7 @@
 """
 from __future__ import annotations
 
+import os
 import shutil
 import sqlite3
 import subprocess
@@ -17,7 +18,7 @@ import time
 from collections import defaultdict
 from pathlib import Path
 
-DB = Path(r"C:\Users\biren\.skills-manager\skills-manager.db")
+DB = Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db"))
 SCENARIO = "开发辅助"
 sys.stdout.reconfigure(encoding="utf-8")
 

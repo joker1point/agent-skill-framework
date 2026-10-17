@@ -16,7 +16,7 @@ from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
 
 # ── 配置 ──────────────────────────────────────────────
-OUTPUT_DIR = Path(r"C:\Users\biren\Documents\trae_projects\0-1agent\video_output")
+OUTPUT_DIR = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\0-1agent\video_output"))
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 VIDEO_WIDTH = 1920

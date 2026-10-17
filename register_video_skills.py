@@ -9,9 +9,9 @@ import hashlib
 import json
 from pathlib import Path
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
-CENTRAL_SKILLS_DIR = Path(r"C:\Users\biren\.skills-manager\skills")
-PROJECT_SKILLS_DIR = Path(r"C:\Users\biren\Documents\trae_projects\0-1agent\.agents\skills")
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
+CENTRAL_SKILLS_DIR = Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills"))
+PROJECT_SKILLS_DIR = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\0-1agent\.agents\skills"))
 
 NEW_SKILLS = [
     {

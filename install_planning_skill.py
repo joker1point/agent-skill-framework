@@ -12,9 +12,9 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
-CENTRAL_SKILLS_DIR = Path(r"C:\Users\biren\.skills-manager\skills")
-PROJECT_SKILLS_DIR = Path(r"C:\Users\biren\Documents\trae_projects\0-1agent\.agents\skills")
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
+CENTRAL_SKILLS_DIR = Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills"))
+PROJECT_SKILLS_DIR = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\0-1agent\.agents\skills"))
 
 SKILL = {
     "name": "planning-with-files",
@@ -28,7 +28,7 @@ def run_cmd(cmd, cwd=None):
     return result.returncode, result.stdout, result.stderr
 
 # 克隆仓库
-temp_dir = Path(r"C:\Users\biren\.skills-manager\temp-clones") / SKILL['name']
+temp_dir = Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\temp-clones")) / SKILL['name']
 if temp_dir.exists():
     try:
         shutil.rmtree(temp_dir)

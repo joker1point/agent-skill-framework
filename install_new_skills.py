@@ -13,10 +13,10 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
-CENTRAL_SKILLS_DIR = Path(r"C:\Users\biren\.skills-manager\skills")
-PROJECT_SKILLS_DIR = Path(r"C:\Users\biren\Documents\trae_projects\0-1agent\.agents\skills")
-TEMP_CLONE_DIR = Path(r"C:\Users\biren\.skills-manager\temp-clones")
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
+CENTRAL_SKILLS_DIR = Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills"))
+PROJECT_SKILLS_DIR = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\0-1agent\.agents\skills"))
+TEMP_CLONE_DIR = Path(os.path.expandvars(r"%USERPROFILE%\.skills-manager\temp-clones"))
 
 SKILLS_TO_INSTALL = [
     {

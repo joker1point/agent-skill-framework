@@ -1,10 +1,11 @@
+import os
 from pathlib import Path
 from skill_linker import SkillLinker
 
 
 def test_skill_linker():
-    skills_repo = Path("c:/Users/biren/GitHub/baoyu-skills")
-    project_root = Path("c:/Users/biren/Documents/trae_projects/0-1agent")
+    skills_repo = Path("%USERPROFILE%/GitHub/baoyu-skills")
+    project_root = Path("%USERPROFILE%/Documents/trae_projects/0-1agent")
 
     linker = SkillLinker(skills_repo, project_root)
 

@@ -1,8 +1,9 @@
+import os
 import sqlite3
 import json
 import re
 
-DB_PATH = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB_PATH = os.path.expandvars(r"%USERPROFILE%\.skills-manager\skills-manager.db")
 
 conn = sqlite3.connect(DB_PATH)
 conn.row_factory = sqlite3.Row

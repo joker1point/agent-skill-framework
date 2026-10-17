@@ -723,7 +723,7 @@ CREATE TABLE active_scenario (
 # scan_skills.py
 import sqlite3
 
-DB = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB = r"%USERPROFILE%\.skills-manager\skills-manager.db"
 conn = sqlite3.connect(DB)
 cur = conn.cursor()
 cur.execute("SELECT name, description FROM skills ORDER BY name")
@@ -757,7 +757,7 @@ def classify(name, desc):
 # create_presets.py
 import sqlite3, uuid, time
 
-DB = r"C:\Users\biren\.skills-manager\skills-manager.db"
+DB = r"%USERPROFILE%\.skills-manager\skills-manager.db"
 NOW = int(time.time() * 1000)
 
 PRESETS = {
@@ -829,12 +829,12 @@ cur.execute("""
 ```powershell
 # 备份
 $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
-Copy-Item "C:\Users\biren\.skills-manager\skills-manager.db" `
-          "C:\Users\biren\.skills-manager\skills-manager.db.bak.$ts"
+Copy-Item "%USERPROFILE%\.skills-manager\skills-manager.db" `
+          "%USERPROFILE%\.skills-manager\skills-manager.db.bak.$ts"
 
 # 回滚
-Copy-Item "C:\Users\biren\.skills-manager\skills-manager.db.bak.20260626_120000" `
-          "C:\Users\biren\.skills-manager\skills-manager.db" -Force
+Copy-Item "%USERPROFILE%\.skills-manager\skills-manager.db.bak.20260626_120000" `
+          "%USERPROFILE%\.skills-manager\skills-manager.db" -Force
 ```
 
 #### 7.7.3 添加新 Preset

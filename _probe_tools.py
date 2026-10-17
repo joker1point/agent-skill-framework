@@ -16,7 +16,7 @@ from openai import OpenAI
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-ENV_PATH = Path(r"C:\Users\biren\Documents\trae_projects\luyan\CharacterSeed\.env")
+ENV_PATH = Path(os.path.expandvars(r"%USERPROFILE%\Documents\trae_projects\luyan\CharacterSeed\.env"))
 load_dotenv(ENV_PATH)
 
 api_key = os.environ.get("AGNES_API_KEY", "")

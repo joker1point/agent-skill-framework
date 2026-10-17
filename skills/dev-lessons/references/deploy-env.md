@@ -30,6 +30,8 @@
 | E-22 | 第三方嵌入"代码里配了"≠线上可用：缺 env 时渲染 undefined 坏区块 | #部署 #环境配置 #第三方嵌入 #验收 |
 | E-23 | 前端构建被环境变量静默改写 API 基址：页面"全空白 + 连接中断" | #部署 #前端 #Vite #环境配置 |
 | E-24 | 手动起的常驻服务不落输出：崩溃后死因不可考 | #运维 #Windows #常驻服务 #可靠性 |
+| E-25 | 内存守护会杀掉 `next build`：用 protect-list.txt 热加载白名单临时豁免 | #环境 #Windows #内存 #长任务 #构建 |
+| E-26 | Android APK 发版前必查 `launchable-activity`：安装成功 ≠ 有桌面入口，目检常量不可信 | #发布 #Android #打包 #验收 |
 
 ### E-01 前端缓存：hash chunk 部署后的强制刷新
 - 场景：#部署 #前端 #Vite
@@ -289,3 +291,27 @@
 - 方案：常驻服务启动时**输出落盘**——用 `cmd /c "python server.py ... >> _run\server.out.log 2>&1"` 包装（比 `Start-Process -RedirectStandardOutput` 省事且没它的已知不便）；重启操作顺手记"起于何时/因何重启"。
 - 反模式：手动起长驻服务图省事不给日志；出事后凭印象猜"是不是重启过了"。
 - 溯源：flowwatch 8788 静默死亡（2026-09-30 会话）
+
+### E-25 内存守护会杀掉 `next build`：用 protect-list.txt 热加载白名单临时豁免（构建/编译类长任务的完整跑法）
+- 场景：#环境 #Windows #内存 #长任务 #构建 #Node
+- 问题：`next build` 在 webpack 阶段**静默消失**：日志停在 "Creating an optimized production build"，无 error、无栈、无 exit code；node 进程不见了，系统可用内存回升；重跑仍复现。
+- 根因：本机内存守护（现位于 `Documents/trae_projects/memfuse/memory-guard.ps1`，ScheduledTask「MemoryGuard」每 5s 采样）在可用内存 <7% 持续 15s（<3.5% 立即）时杀掉**工作集最大且未被保护**的进程；`node` 不在保护名单 → 构建正好是最大目标。
+- 方案：
+  1. **先看守护自己的证据**（应用日志里什么都没有）：日志在 `memfuse/logs/memory-guard-<守护启动日>.log`（文件名按守护启动日、不是当天，别被日期骗）；桌面 `memory-guard-alert.txt` 每次击杀都写 `killed: node (pid …, …MB) cmd: …`；
+  2. **白名单热加载**：把 `node` 等临时写进 `protect-list.txt`（守护每 tick 检查该文件 mtime，**免重启生效**；也可 `-AddProtect node`，会自动备份 .bak）；把可能被"顺位下一个"选中、且持有用户窗口的应用（聊天/浏览器）一并保护，否则守护会继续找下一个 ≥300MB 的目标；
+  3. 压峰值：`NODE_OPTIONS=--max-old-space-size=1536`（本次实测构建全程通过）；
+  4. **构建完立刻恢复白名单**——临时豁免，不做永久降低守护能力的改动。
+- 反模式：把"构建静默消失"当 Webpack/Node 的 bug 查；永久保护 node（等于让守护在最需要动手时无目标可杀）；只保护 node 不管"顺位下一个"（会误伤用户应用）。
+- 溯源：2026-10-03 TechLog 本地构建（两次被守护杀，21:06:50 killed node pid 67144 1177MB，桌面 alert 文件实证；同族 E-09 / E-18）
+
+### E-26 Android APK 发版前必查 `launchable-activity`：安装成功 ≠ 有桌面入口，目检 Manifest 常量不可信
+- 场景：#发布 #Android #打包 #验收
+- 问题：APK 安装成功，但桌面/应用抽屉没有图标（"设置 → 应用"列表里却能看到它）；`aapt dump badging` 输出中**没有 `launchable-activity:` 行**。
+- 根因：launcher intent-filter 的 category 常量拼错（`android.intent.action.LAUNCHER`，应为 `android.intent.category.LAUNCHER`，即 `action.` 误代 `category.`）。PackageManager 按标准常量做精确匹配，匹配不到就不把应用注册为桌面入口——**应用本体安装完全正常**，现象极具迷惑性。更隐蔽的是**宽容型渲染工具会掩盖错误**：`aapt2 dump xmltree` 与文本编辑器（含 AI 的 Read）都把错误值"校正显示"成 `category.LAUNCHER`，肉眼目检必然漏诊——「打印出来正确」≠「字节正确」≠「系统语义正确」。
+- 方案（发版闸门，按成本递增）：
+  1. **静态闸门**：`aapt dump badging app.apk` 必须有 `launchable-activity: name='<pkg>/.MainActivity' …`；等价的第三方仲裁：pyaxmlparser `APK(f).get_main_activity()` 非 None。注意要用**按标准常量做匹配**的工具（badging），而非只做渲染的 xmltree；
+  2. **字节仲裁**：怀疑常量被写错时，解开 APK 的 AndroidManifest.xml，在原始字节里搜字符串池（AXML 字符串是 UTF-16LE，如 `'category.LAUNCHER'.encode('utf-16-le')`），不信任何渲染/解码层的显示；
+  3. **设备闭环**：有模拟器/真机时 `adb install` → `adb shell "cmd package query-activities -a android.intent.action.MAIN -c android.intent.category.LAUNCHER | grep <pkg>"` 必须命中，再截图应用抽屉；用"旧包先装复现、覆盖新包转好"形成根因闭环（同签名 debug 包可直接覆盖）；
+  4. **对照组排错**：工具输出可疑时，拿一个已知正常的 APK 跑同一条命令——aapt 35 的 badging 会输出一行孤立的 `main`，是工具固有行为、与故障无关。
+- 反模式：构建成功 + 能安装 + 验过签名/包信息就发版（安装成功不代表存在可启动入口）；用 xmltree/编辑器目检 intent action/category 常量；遇到异常输出先怪工具版本而不做对照。
+- 溯源：2026-10-14 TechLog 薄壳 APK v1.0 桌面无图标事故（修复版 v1.0.1 / versionCode 2，提交 a3911f1；线上 SHA256 与本地一致）；usercontext/2026-10-14.md「TechLog 1.0 桌面无图标事故 → 1.0.1」。**再次验证元原则 11**（宽容型工具的"假正确"读数，必须换严格匹配型工具二次确认）与**元原则 13**（构建/安装通过 ≠ 交付物可用，发版闸门要打在系统真实识别的入口契约上）。
